@@ -59,6 +59,8 @@
 #include "lwip/ip6.h"
 #include "lwip/ip6_addr.h"
 #include "lwip/nd6.h"
+#include "stm32f2xx_rng.h"
+#include "stm32f2xx_rcc.h"
 
 #include <string.h>
 
@@ -144,6 +146,16 @@ static err_t tcp_close_shutdown_fin(struct tcp_pcb *pcb);
 void
 tcp_init(void)
 {
+    rt_uint32_t  systick_count;
+    RNG_DeInit();
+	RCC_AHB2PeriphClockCmd(RCC_AHB2Periph_RNG,ENABLE);
+	RNG_Cmd(ENABLE);
+	while(RNG_GetFlagStatus(RNG_FLAG_DRDY) == RESET); 	
+	systick_count = RNG_GetRandomNumber();
+	RNG_Cmd(DISABLE);
+	RNG_DeInit();	
+	srand(systick_count);              //set a random seed  
+	
 #if LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS && defined(LWIP_RAND)
   tcp_port = TCP_ENSURE_LOCAL_PORT_RANGE(LWIP_RAND());
 #endif /* LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS && defined(LWIP_RAND) */
