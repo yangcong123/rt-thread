@@ -66,7 +66,6 @@
 #define DMA_READ            0x46                    // DMA 读盘，DMA 方式字（送DMA 端口12，11）。
 #define DMA_WRITE           0x4A
 
-extern void init_fd(void);
-extern void fd_handler(void);
+extern void rt_floppy_init(void);
 
 #endif

@@ -66,11 +66,9 @@ static __inline void outw(int port, unsigned short data)
 
 static __inline unsigned char readcmos(int reg)
 {
-	outb(reg,0x70);
+	outb(0x70,reg);
 	return (unsigned char) inb(0x71);
 }
-
-
 
 #define io_delay()  \
 	__asm__ __volatile__ ("pushal \n\t"\

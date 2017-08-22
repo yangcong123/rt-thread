@@ -12,10 +12,14 @@ typedef rt_int8_t  s8;
 typedef rt_int16_t s16;
 typedef rt_int32_t s32;
 
+#define OUTB(v,p) outb(p,v)
+
 #include "floppy.h"
 #include "dma.h"
 
-#define panic(str) rt_kprintf("panic::" str)
+#define NULL RT_NULL
+#define SECTOR_SIZE 512
+#define panic(str,...) do { rt_kprintf("panic::" str,##__VA_ARGS__); while(1); } while(0)
 
 #define _local_irq_save(level) level = rt_hw_interrupt_disable()
 #define _local_irq_restore(level) rt_hw_interrupt_enable(level)
@@ -33,7 +37,7 @@ static u8 floppy_reply_buffer[MAX_REPLIES];         /* 软驱回应缓冲区 */
 static char *floppy_inc_name;                       /* 软驱型号名 */
 static char *floppy_type;
 static u32  floppy_motor=0;                         /* 软驱马达状态字节 */
-
+static u32  floppy_size =0;
 /**********************功能函数***************************/
 static void floppy_result(void);                    /* 获得软驱响应状态  */
 static u32  floppy_sendbyte(u32);                   /* 向软驱控制寄存器发送一个控制字节  */
@@ -74,7 +78,7 @@ u32 floppy_sendbyte( u32 value )
         stat = inb( FD_STATUS ) & (STATUS_READY|STATUS_DIR);    //读取状态寄存器
         if  ( stat  == STATUS_READY )
         {
-            outb( value ,FD_DATA);                              //将参数写入数据寄存器
+            OUTB( value ,FD_DATA);                              //将参数写入数据寄存器
             return 1;
         }
         io_delay();                                             // 作一些延迟
@@ -124,14 +128,17 @@ u32 floppy_get_info(void)
     {
     case 0x02: // 1.2MB
         floppy_type = "1.2MB";
+		floppy_size = 2458*512;
     break;
 
     case 0x04: // 1.44MB       标准软盘
         floppy_type = "1.44MB";
+		floppy_size = 2880*512;
         break;
 
     case 0x05: // 2.88MB
         floppy_type = "2.88MB";
+		floppy_size = 2*2880*512;
         break;
     }
     return 1;
@@ -144,7 +151,7 @@ void floppy_motorOn( void )
     if (!floppy_motor)
     {
         _local_irq_save(eflags);
-        outb(28,FD_DOR);
+        OUTB(28,FD_DOR);
         floppy_motor = 1;
         _local_irq_restore(eflags);
     }
@@ -158,7 +165,7 @@ void floppy_motorOff( void )
     if (floppy_motor)
     {
         _local_irq_save(eflags);
-        outb(12,FD_DOR);
+        OUTB(12,FD_DOR);
         floppy_motor = 0;
         _local_irq_restore(eflags);
 
@@ -172,7 +179,7 @@ void floppy_setmode(void)
     floppy_sendbyte (FD_SPECIFY);
     floppy_sendbyte (0xcf);
     floppy_sendbyte (0x06);
-    outb (0,FD_DCR);
+    OUTB (0,FD_DCR);
 }
 
 
@@ -227,8 +234,127 @@ void floppy_read_cmd(u32 blk)
     return;
 }
 
-void init_fd(void)
+static struct rt_device devF;
+static struct rt_mutex lock;
+static struct rt_semaphore sem;
+
+/* RT-Thread device interface */
+
+static rt_err_t rt_floppy_init_internal(rt_device_t dev)
 {
+    return RT_EOK;
+}
+
+static rt_err_t rt_floppy_open(rt_device_t dev, rt_uint16_t oflag)
+{
+    return RT_EOK;
+}
+
+static rt_err_t rt_floppy_close(rt_device_t dev)
+{
+    return RT_EOK;
+}
+
+/* position: block page address, not bytes address
+ * buffer:
+ * size  : how many blocks
+ */
+static rt_size_t rt_floppy_read(rt_device_t device, rt_off_t position, void *buffer, rt_size_t size)
+{
+	rt_size_t doSize = size;
+
+    rt_mutex_take(&lock, RT_WAITING_FOREVER);
+	while(size>0)
+	{
+		floppy_read_cmd(position);
+
+		rt_sem_take(&sem, RT_WAITING_FOREVER); /* waiting isr sem forever */
+
+		floppy_result();
+		io_delay();
+
+		if(ST1 != 0 || ST2 != 0)
+		{
+			panic("ST0 %d ST1 %d ST2 %d\n",ST0,ST1,ST2);
+		}
+    
+		rt_memcpy(buffer, floppy_buffer, 512);
+
+		floppy_motorOff();
+		io_delay();
+		
+		position += 1;
+		size     -= 1;
+	}
+	rt_mutex_release(&lock);
+
+    return doSize;
+}
+
+/* position: block page address, not bytes address
+ * buffer:
+ * size  : how many blocks
+ */
+static rt_size_t rt_floppy_write(rt_device_t device, rt_off_t position, const void *buffer, rt_size_t size)
+{
+    rt_mutex_take(&lock, RT_WAITING_FOREVER);
+	panic("FIXME:I don't know how!\n");
+    rt_mutex_release(&lock);
+    return size;
+}
+
+static rt_err_t rt_floppy_control(rt_device_t dev, rt_uint8_t cmd, void *args)
+{
+    RT_ASSERT(dev != RT_NULL);
+
+    if (cmd == RT_DEVICE_CTRL_BLK_GETGEOME)
+    {
+        struct rt_device_blk_geometry *geometry;
+
+        geometry = (struct rt_device_blk_geometry *)args;
+        if (geometry == RT_NULL) return -RT_ERROR;
+
+        geometry->bytes_per_sector = SECTOR_SIZE;
+        geometry->block_size = SECTOR_SIZE;
+
+        geometry->sector_count = floppy_size / SECTOR_SIZE;
+    }
+
+    return RT_EOK;
+}
+
+static void rt_floppy_isr(int vector, void* param)
+{
+	(void)vector;
+	(void)param;
+	rt_sem_release(&sem);
+}
+
+void rt_floppy_init(void)
+{
+    struct rt_device *device;
+
+    rt_mutex_init(&lock,"fdlock", RT_IPC_FLAG_FIFO);
+	rt_sem_init(&sem, "fdsem", 0, RT_IPC_FLAG_FIFO);
+
+	rt_hw_interrupt_install(FLOPPY_IRQ, rt_floppy_isr, RT_NULL, "floppy");
+    rt_hw_interrupt_umask(FLOPPY_IRQ);
+
     floppy_get_info();
-    rt_kprintf("Floppy Inc : %s  Floppy Type : %s",floppy_inc_name,floppy_type);
+    rt_kprintf("Floppy Inc : %s  Floppy Type : %s\n",floppy_inc_name,floppy_type);
+
+    device = &(devF);
+
+    device->type  = RT_Device_Class_Block;
+    device->init = rt_floppy_init_internal;
+    device->open = rt_floppy_open;
+    device->close = rt_floppy_close;
+    device->read = rt_floppy_read;
+    device->write = rt_floppy_write;
+    device->control = rt_floppy_control;
+    device->user_data = NULL;
+
+    rt_device_register(device, "floppy",
+                       RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_REMOVABLE | RT_DEVICE_FLAG_STANDALONE);
+
 }
