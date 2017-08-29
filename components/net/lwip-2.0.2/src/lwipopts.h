@@ -37,6 +37,7 @@
 #endif
 
 #define LWIP_HAVE_LOOPIF            0
+#define LWIP_NETIF_LOOPBACK         1
 
 #define LWIP_PLATFORM_BYTESWAP      0
 
