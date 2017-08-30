@@ -10,7 +10,7 @@
 
 #define NO_SYS                      0
 #define LWIP_SOCKET                 1
-#define LWIP_NETCONN                1
+#define LWIP_NETCONN                0
 
 #ifdef RT_LWIP_IGMP
 #define LWIP_IGMP                   1
@@ -45,7 +45,7 @@
 #define BYTE_ORDER                  LITTLE_ENDIAN
 #endif
 
-/* #define RT_LWIP_DEBUG */
+#define RT_LWIP_DEBUG 
 
 #ifdef RT_LWIP_DEBUG
 #define LWIP_DEBUG
@@ -85,7 +85,7 @@
 
 #define LWIP_DBG_TYPES_ON           (LWIP_DBG_ON|LWIP_DBG_TRACE|LWIP_DBG_STATE|LWIP_DBG_FRESH|LWIP_DBG_HALT)
 
-/* ---------- Memory options ---------- */
+/* ---------- Memory options ---------- */  
 #define MEM_ALIGNMENT               4
 #define MEMP_OVERFLOW_CHECK         1 ////
 #define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 1 ////
@@ -391,6 +391,11 @@
    ---------- Socket options ----------
    ------------------------------------
 */
+
+#define LWIP_NETIF_LOOPBACK             1
+
+
+
 /*
  * LWIP_SOCKET==1: Enable Socket API (require to use sockets.c)
  */
@@ -447,22 +452,7 @@
 #define SO_REUSE                        0
 #endif
 
-/*
-   ------------------------------------
-   ------- Applications options -------
-   ------------------------------------
-*/
 
-/**
- * Max. length of TFTP filename
- */
-#ifdef RT_LWIP_TFTP_MAX_FILENAME_LEN
-#define TFTP_MAX_FILENAME_LEN           RT_LWIP_TFTP_MAX_FILENAME_LEN
-#elif defined(RT_DFS_ELM_MAX_LFN)
-#define TFTP_MAX_FILENAME_LEN           RT_DFS_ELM_MAX_LFN
-#else
-#define TFTP_MAX_FILENAME_LEN           64
-#endif
-
+#define LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS 1
 
 #endif /* __LWIPOPTS_H__ */
