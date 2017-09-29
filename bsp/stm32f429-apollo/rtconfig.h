@@ -30,7 +30,7 @@
 #define RT_TIMER_THREAD_PRIO		4
 #define RT_TIMER_THREAD_STACK_SIZE	512
 // <bool name="RT_USING_MODULE" description="Using Application Module" default="true" />
-#define RT_USING_MODULE
+//#define RT_USING_MODULE
 /* SECTION: IPC */
 /* Using Semaphore*/
 #define RT_USING_SEMAPHORE
