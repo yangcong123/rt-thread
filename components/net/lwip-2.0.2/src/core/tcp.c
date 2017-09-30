@@ -59,8 +59,6 @@
 #include "lwip/ip6.h"
 #include "lwip/ip6_addr.h"
 #include "lwip/nd6.h"
-#include "stm32f2xx_rng.h"
-#include "stm32f2xx_rcc.h"
 
 #include <string.h>
 
