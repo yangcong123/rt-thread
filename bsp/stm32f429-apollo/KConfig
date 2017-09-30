@@ -17,3 +17,49 @@ config $PKGS_DIR
 
 source "$RTT_DIR/KConfig"
 source "$PKGS_DIR/KConfig"
+    
+config IDLE_THREAD_STACK_SIZE
+    int "The stack size of timer thread"
+    default 1024   
+    
+config RT_USING_EXT_SDRAM
+    bool "Using RT_USING_EXT_SDRAM"
+    default y
+
+config RT_RTC_NAME
+    string "RT_RTC_NAME"
+    default rtc
+
+config RT_USING_I2C_BITOPS
+    bool "Using RT_USING_I2C_BITOPS"
+    default y    
+
+config RT_USING_UART1
+    bool "Using RT_USING_UART1"
+    default y    
+    
+config RT_USING_UART2
+    bool "Using RT_USING_UART2"
+    default y    
+    
+config RT_USING_UART3
+    bool "Using RT_USING_UART3"
+    default y    
+ 
+config RT_DFS_ELM_WORD_ACCESS
+    bool "Using RT_DFS_ELM_WORD_ACCESS"
+    default y   
+  
+config RT_USING_SPI5
+    bool "Using RT_USING_SPI5"
+    default y     
+    
+config RT_USING_DFS_UFFS
+    bool "Using RT_USING_DFS_UFFS"
+    default y   
+ 
+config FINSH_DEFAULT_PASSWORD
+    string "The default password for shell authentication"
+    default "rtthread"
+    
+    
