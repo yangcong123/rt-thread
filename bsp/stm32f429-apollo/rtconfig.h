@@ -12,7 +12,7 @@
 #define RT_TICK_PER_SECOND 1000
 #define RT_DEBUG
 #define RT_USING_OVERFLOW_CHECK
-#define RT_DEBUG_INIT 
+#define RT_DEBUG_INIT 1
 /* RT_DEBUG_THREAD is not set */
 #define RT_USING_HOOK
 /* RT_USING_TIMER_SOFT is not set */
