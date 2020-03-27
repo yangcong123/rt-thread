@@ -69,7 +69,6 @@ def studio_prj_update(stdio_prj_path, mdk_info):
     #     f.write(data)
 
     data_get["projectDescription"]["linkedResources"]["link"].clear()
-    # print(data_get["linkedResources"]["link"])
 
     for group in mdk_info["groups"]:
         creat_group_dict = dict()
@@ -83,6 +82,12 @@ def studio_prj_update(stdio_prj_path, mdk_info):
             group_file_name = group["GroupName"] + "\\" + file["File"]["FileName"]
             file_path = os.path.join(os.path.dirname(stdio_prj_path), "..\\" + file["File"]["FilePath"])
 
+            print(file["File"]["FileName"])
+
+            if file["File"]["FileName"] == "context_rvds.S" or file["File"]["FileName"] == "context_iar.S":
+                group_file_name = group["GroupName"] + "\\" + "context_gcc.S"
+                file_path = file_path.replace("context_rvds.S", "context_gcc.S").replace("context_iar.S", "context_gcc.S")
+
             # add files to group
             creat_group_file_dict = dict()
             creat_group_file_dict["name"] = group_file_name
@@ -91,10 +96,11 @@ def studio_prj_update(stdio_prj_path, mdk_info):
             data_get["projectDescription"]["linkedResources"]["link"].append(creat_group_file_dict)
 
     new_xml_str = xmltodict.unparse(data_get, pretty=True)  # 这里直接放dict对象，不要放json字符串
-    print(new_xml_str)
+    # print(new_xml_str)
 
     with open(".project", "w") as f:
         f.write(new_xml_str)
+
 
 def studio_prj_config_update(configuration_path, mdk_info):
     with open(configuration_path, "r") as f:
@@ -105,7 +111,36 @@ def studio_prj_config_update(configuration_path, mdk_info):
     with open("read_info_from_eclipse_config_project.json", "w") as f:
         f.write(data)
 
- storageModule cproject configuration folderInfo  toolChain tool option   listOptionValue
+    include_path = mdk_info["include_path"].split(";")
+
+    path_list = []
+    for path in include_path:
+        option_value = dict()
+        option_value["@builtIn"] = "false"
+        path = os.path.join(os.getcwd(), "..\\" + path)
+        option_value["@value"] = path.replace('\\', "/")
+        print(path)
+        path_list.append(option_value)
+
+    print(path_list)
+
+    for module in data_get["cproject"]["storageModule"][0]["cconfiguration"]["storageModule"]:
+        if module["@moduleId"] == "cdtBuildSystem":
+            for tool in module["configuration"]["folderInfo"]["toolChain"]["tool"]:
+                if tool["@name"] == "GNU ARM Cross C Compiler":
+                    for option in tool["option"]:
+                        if option["@name"] == "Include paths (-I)":
+                            # print(option["listOptionValue"])
+                            option["listOptionValue"] = path_list
+                            # for path in option["listOptionValue"]:
+                            #     print(path)
+
+    new_xml_str = xmltodict.unparse(data_get, pretty=True)  # 这里直接放dict对象，不要放json字符串
+    new_xml_str = new_xml_str[0:39] + "<?fileVersion 4.0.0?>" + new_xml_str[39:]
+
+    with open(".cproject", "w") as f:
+        f.write(new_xml_str)
+
 
 def main():
     mdk_info = get_mdk_prj_info(os.path.join(os.getcwd(), "../project.uvprojx"))
